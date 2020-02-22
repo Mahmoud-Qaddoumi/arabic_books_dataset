@@ -1,0 +1,66 @@
+from glob import glob
+import pandas as pd
+
+
+def save_as_docx(path_of_doc_files):
+    import re
+    import os
+    import win32com.client as win32
+    from win32com.client import constants
+    # Opening MS Word
+    word = win32.gencache.EnsureDispatch('Word.Application')
+    doc = word.Documents.Open(path_of_doc_files)
+    doc.Activate()
+    # new_path =glob('C:\\Users\\Mahmoud Qaddoumi\\Desktop\\new', recursive=True)
+
+    # Rename path with .docx
+    new_file_abs = os.path.abspath(path_of_doc_files)
+    new_file_abs = re.sub(r'\.\w+$', '.docx', new_file_abs)
+
+    # Save and Close
+    word.ActiveDocument.SaveAs(
+        new_file_abs, FileFormat=constants.wdFormatXMLDocument
+    )
+    doc.Close(False)
+
+
+def extract_docx_text(path_with_docx_files, mode='rb'):
+    from docx import Document
+    book_number = 1
+    Book_Name = path_with_docx_files[path_with_docx_files.rfind('\\') + 1:-5]
+    print(Book_Name)
+    f = open(path_with_docx_files, mode=mode)
+    paragraph_list = []
+    Paragraph_number = 1
+    for paragraph in Document(f).paragraphs:
+        if len(paragraph.text) > 10:
+            data = [book_number, Book_Name, Paragraph_number, paragraph.text]
+            Paragraph_number = Paragraph_number + 1
+            paragraph_list.append(data)
+    book_number = book_number + 1
+    del paragraph
+    f.close()
+    return Book_Name, paragraph_list
+
+
+# Create list of paths to .doc files
+paths_doc = glob('C:\\path\\path\\path\\اpath\\**\\*.doc', recursive=False)
+paths_docs = glob('C:\\path\\path\\path\\path\\**\\*.docx', recursive=True)
+col_names = ['Book_Number', 'Book_name', 'Paragraph_No', 'text']
+
+books_csv = pd.DataFrame(columns=col_names)
+books_csv.to_csv('my_csv.csv', encoding='utf-8', header=True)
+non_readable_books = []  # in case there is something worng in any book will avoid it
+for path in paths_doc:
+   save_as_docx(path)
+
+for i, path in enumerate(paths_docs):
+    try:
+        file_name, out = extract_docx_text(path)
+        total_csv = pd.DataFrame(data=out, columns=col_names)
+        total_csv.to_csv('my_csv.csv', mode='a', header=False, encoding='utf-8')
+
+    except:
+        non_readable_books.append(path[path.rfind('\\') + 1:-5])
+        continue
+print(non_readable_books)
